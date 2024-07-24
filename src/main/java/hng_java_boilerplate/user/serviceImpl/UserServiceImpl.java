@@ -2,6 +2,7 @@ package hng_java_boilerplate.user.serviceImpl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hng_java_boilerplate.user.dto.request.GetUserDto;
+import hng_java_boilerplate.user.dto.request.SignInDto;
 import hng_java_boilerplate.user.dto.request.SignupDto;
 import hng_java_boilerplate.user.dto.response.ApiResponse;
 import hng_java_boilerplate.user.dto.response.ResponseData;
@@ -16,9 +17,14 @@ import hng_java_boilerplate.user.service.UserService;
 import hng_java_boilerplate.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -33,13 +39,20 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 public class UserServiceImpl implements UserDetailsService, UserService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final JwtUtils jwtUtils;
+    private final AuthenticationManager authenticationManager;
 
+    public UserServiceImpl(PasswordEncoder passwordEncoder, UserRepository userRepository, JwtUtils jwtUtils, @Lazy AuthenticationManager authenticationManager) {
+        this.passwordEncoder = passwordEncoder;
+        this.userRepository = userRepository;
+        this.jwtUtils = jwtUtils;
+        this.authenticationManager = authenticationManager;
+    }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -73,6 +86,7 @@ public class UserServiceImpl implements UserDetailsService, UserService {
         ResponseData data = new ResponseData(token, userResponse);
         return new ResponseEntity<>(new ApiResponse(HttpStatus.CREATED.value(), "Registration Successful!", data), HttpStatus.CREATED);
     }
+
 
     private UserResponse getUserResponse(User user){
         String[] nameParts = user.getName().split(" ", 2);
@@ -144,6 +158,33 @@ public class UserServiceImpl implements UserDetailsService, UserService {
 
         return userDto;
     };
+
+
+    @Override
+    public ResponseEntity<ApiResponse> signInUser(SignInDto signInDto) {
+
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            signInDto.getEmail(),
+                            signInDto.getPassword()
+                    )
+            );
+
+            User user = (User) loadUserByUsername(signInDto.getEmail());
+            UserResponse userResponse = getUserResponse(user);
+            String token = jwtUtils.createJwt.apply(loadUserByUsername(user.getEmail()));
+
+            ResponseData data = new ResponseData(token, userResponse);
+            return new ResponseEntity<>(new ApiResponse(HttpStatus.OK.value(), "Logged In Successfully", data), HttpStatus.OK);
+
+        } catch (BadCredentialsException ex){
+            return new ResponseEntity<>(new ApiResponse(HttpStatus.UNAUTHORIZED.value(), "Invalid email or password",null), HttpStatus.UNAUTHORIZED);
+        }
+
+
+
+    }
 
 
 }

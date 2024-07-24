@@ -2,6 +2,7 @@ package hng_java_boilerplate.config;
 
 import hng_java_boilerplate.user.serviceImpl.UserServiceImpl;
 import hng_java_boilerplate.util.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class WebSecurityConfig {
     private UserServiceImpl userService;
     private JwtAuthenticationFilter authentication;
